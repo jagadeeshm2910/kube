@@ -9,3 +9,5 @@ stringData:
   DATABASE: wordpress
   DB_USER: wpuser
   DB_PASSWORD: wppass
+
+#donot commit this file in prod. just for demo
