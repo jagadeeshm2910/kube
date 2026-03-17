@@ -2,58 +2,51 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: investigator-agent
+  name: kara-dashboard
   namespace: kara
   labels:
-    app: investigator-agent
-    app.kubernetes.io/name: investigator-agent
-    app.kubernetes.io/component: investigator
+    app: kara-dashboard
+    app.kubernetes.io/name: kara-dashboard
+    app.kubernetes.io/component: dashboard
     app.kubernetes.io/part-of: kara
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: investigator-agent
+      app: kara-dashboard
   template:
     metadata:
       labels:
-        app: investigator-agent
-        app.kubernetes.io/name: investigator-agent
-        app.kubernetes.io/component: investigator
+        app: kara-dashboard
+        app.kubernetes.io/name: kara-dashboard
+        app.kubernetes.io/component: dashboard
         app.kubernetes.io/part-of: kara
     spec:
-      serviceAccountName: investigator-agent
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         fsGroup: 1000
       containers:
-        - name: investigator-agent
-          image: kara/investigator-agent:latest
+        - name: kara-dashboard
+          image: kara/dashboard:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
-              containerPort: 8081
+              containerPort: 8083
               protocol: TCP
           env:
-            - name: SERVICE_HOST
-              value: "0.0.0.0"
-            - name: SERVICE_PORT
-              value: "8081"
-            - name: K8S_IN_CLUSTER
-              value: "true"
-            - name: LOG_LEVEL
-              value: "INFO"
             - name: ANALYST_URL
-              value: "http://kara-dashboard:8083"
-            - name: ANALYST_TIMEOUT
-              value: "10"
+              value: "http://analyst-agent:8082"
+            - name: INVESTIGATOR_URL
+              value: "http://investigator-agent:8081"
+            - name: WATCHER_URL
+              value: "http://watcher-agent:8080"
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: "50m"
+              memory: "64Mi"
             limits:
-              cpu: "500m"
+              cpu: "250m"
               memory: "256Mi"
           livenessProbe:
             httpGet:
@@ -73,7 +66,6 @@ spec:
             failureThreshold: 3
           securityContext:
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
@@ -84,19 +76,20 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: investigator-agent
+  name: kara-dashboard
   namespace: kara
   labels:
-    app: investigator-agent
-    app.kubernetes.io/name: investigator-agent
-    app.kubernetes.io/component: investigator
+    app: kara-dashboard
+    app.kubernetes.io/name: kara-dashboard
+    app.kubernetes.io/component: dashboard
     app.kubernetes.io/part-of: kara
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
-    - port: 8081
+    - port: 8083
       targetPort: http
       protocol: TCP
       name: http
+      nodePort: 30083
   selector:
-    app: investigator-agent
+    app: kara-dashboard
