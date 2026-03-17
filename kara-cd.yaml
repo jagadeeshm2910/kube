@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: wordpress
+  name: kara
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/jagadeeshm2910/kube
     targetRevision: main
-    path: k8s-app1
+    path: kara
   destination:
     server: https://kubernetes.default.svc
-    namespace: wp-dev
+    namespace: kara
   syncPolicy:
     automated:
       prune: true

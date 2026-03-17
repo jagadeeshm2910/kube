@@ -1,0 +1,115 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: watcher-agent
+  namespace: kara
+  labels:
+    app: watcher-agent
+    app.kubernetes.io/name: watcher-agent
+    app.kubernetes.io/component: watcher
+    app.kubernetes.io/part-of: kara
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: watcher-agent
+  template:
+    metadata:
+      labels:
+        app: watcher-agent
+        app.kubernetes.io/name: watcher-agent
+        app.kubernetes.io/component: watcher
+        app.kubernetes.io/part-of: kara
+    spec:
+      serviceAccountName: watcher-agent
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: watcher-agent
+          image: kara/watcher-agent:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: SERVICE_NAME
+              value: "watcher-agent"
+            - name: SERVICE_HOST
+              value: "0.0.0.0"
+            - name: SERVICE_PORT
+              value: "8080"
+            - name: INVESTIGATOR_URL
+              value: "http://investigator-agent:8081"
+            - name: INVESTIGATOR_TIMEOUT
+              value: "30"
+            - name: K8S_IN_CLUSTER
+              value: "true"
+            - name: WATCH_TIMEOUT_SECONDS
+              value: "300"
+            # watching wp-dev and all other namespaces; excluding system + kara itself
+            - name: EXCLUDE_NAMESPACES
+              value: "kube-system,kube-public,kube-node-lease,kara"
+            - name: RESTART_COUNT_THRESHOLD
+              value: "5"
+            - name: MAX_RETRIES
+              value: "3"
+            - name: RETRY_DELAY_SECONDS
+              value: "5"
+            - name: LOG_LEVEL
+              value: "INFO"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: watcher-agent
+  namespace: kara
+  labels:
+    app: watcher-agent
+    app.kubernetes.io/name: watcher-agent
+    app.kubernetes.io/component: watcher
+    app.kubernetes.io/part-of: kara
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: watcher-agent
